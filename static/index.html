@@ -15,6 +15,7 @@
     <a class="brand" href="/" aria-label="Transcritor, início"><img src="/static/icon.svg" width="32" height="32" alt=""><span>Transcritor <span class="brand-detail">/ Deepgram</span></span></a>
     <div class="topbar-actions">
       <span class="connection" id="connection" role="status">Verificando configuração…</span>
+      <button class="secondary compact" id="open-settings" type="button" disabled>API Key</button>
       <details class="appearance" id="appearance">
         <summary>Aparência</summary>
         <div class="appearance-panel">
@@ -45,6 +46,27 @@
       </details>
     </div>
   </header>
+  <dialog id="settings-dialog" aria-labelledby="credentials-title" aria-describedby="credentials-description">
+    <form id="credentials-form">
+      <h2 id="credentials-title">Configurar API Key</h2>
+      <p id="credentials-description" class="hint">A chave fica salva no servidor e será usada nas próximas transcrições. Uma transcrição em andamento continua com a chave anterior.</p>
+      <fieldset id="credentials-fields">
+        <legend class="sr-only">Credenciais da Deepgram</legend>
+        <label for="api-key">Nova API Key</label>
+        <input id="api-key" type="password" maxlength="512" autocomplete="new-password" spellcheck="false" autocapitalize="none" aria-describedby="api-key-hint" autofocus>
+        <p id="api-key-hint" class="hint"></p>
+        <label for="project-id">ID do projeto <span class="hint">(opcional)</span></label>
+        <input id="project-id" type="text" maxlength="100" autocomplete="off" spellcheck="false" autocapitalize="none" aria-describedby="project-id-hint">
+        <p id="project-id-hint" class="hint">Usado para consultar o saldo. Deixe vazio para detectar automaticamente. Ao trocar de conta, limpe este campo ou informe o novo projeto.</p>
+        <p class="hint">Salvar não valida a chave na Deepgram. A consulta de saldo será atualizada em seguida; ela exige permissões adicionais.</p>
+        <div id="credentials-error" class="error" role="alert" hidden></div>
+        <div class="dialog-actions">
+          <button class="secondary" id="cancel-settings" type="button">Cancelar</button>
+          <button class="primary" id="save-settings" type="submit">Salvar e usar</button>
+        </div>
+      </fieldset>
+    </form>
+  </dialog>
   <main>
     <div class="intro"><h1>Do áudio ao texto.</h1><p>Escolha a gravação, ajuste a transcrição e baixe o resultado.</p></div>
     <section class="balance-bar" aria-labelledby="balance-title" aria-busy="false" id="balance-section">
@@ -54,9 +76,10 @@
     </section>
     <div class="notice" id="setup" hidden>
       <strong>Falta configurar sua chave.</strong>
-      <p>Preencha <code>DEEPGRAM_API_KEY</code> no arquivo <code>.env</code> e execute <code>docker compose up -d --force-recreate</code> na pasta do projeto.</p>
+      <p>Abra <strong>API Key</strong> no cabeçalho para salvar sua chave e começar a transcrever.</p>
       <button class="secondary compact" id="reload-config" type="button">Verificar configuração</button>
     </div>
+    <p id="credentials-status" class="credentials-status" role="status"></p>
     <div id="error" class="error" role="alert" hidden></div>
     <div class="workspace">
       <section class="settings" aria-labelledby="settings-title">

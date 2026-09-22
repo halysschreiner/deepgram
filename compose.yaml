@@ -12,6 +12,8 @@ services:
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,::1}
     restart: unless-stopped
     read_only: true
+    volumes:
+      - settings:/app/data
     tmpfs:
       - /tmp:size=134217728,mode=1777
     cap_drop:
@@ -24,3 +26,5 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+volumes:
+  settings:

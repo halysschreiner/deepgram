@@ -71,7 +71,7 @@ h3 { font-size: 1.1rem; font-weight: 600; }
 .brand-detail { font-weight: 400; color: var(--muted); }
 .connection { font-size: .85rem; color: var(--muted); }
 .connection.ready { color: var(--primary); }
-.topbar-actions { display: flex; align-items: center; gap: 20px; }
+.topbar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .appearance { position: relative; border: 0; margin: 0; }
 .appearance > summary { padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; white-space: nowrap; }
 .appearance > summary:hover, .appearance[open] > summary { background: var(--surface); }
@@ -119,6 +119,15 @@ audio { width: 100%; height: 38px; margin-top: 12px; }
 label { display: block; font-size: .87rem; font-weight: 550; }
 select, input[type=number], textarea { display: block; width: 100%; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; margin-top: 7px; min-width: 0; }
 select { min-height: 42px; }
+dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 26px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); box-shadow: var(--panel-shadow); }
+dialog::backdrop { background: #0008; }
+#credentials-fields > label { margin-top: 20px; }
+#credentials-fields > input { display: block; width: 100%; min-width: 0; padding: 10px; margin-top: 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+.dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.dialog-actions .primary { width: auto; }
+#credentials-error { margin: 16px 0 0; }
+.credentials-status { color: var(--primary); font-size: .88rem; margin-bottom: 20px; }
+.credentials-status:empty { display: none; }
 textarea { resize: vertical; font-weight: 400; }
 textarea::placeholder { color: var(--muted); opacity: 1; }
 .hint { color: var(--muted); font-size: .8rem; margin-top: 8px; line-height: 1.5; }

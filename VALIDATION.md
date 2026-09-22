@@ -22,3 +22,12 @@ Os testes automatizados usam respostas simuladas da API. O teste ponta a ponta c
 - Contraste mínimo medido de 6,19:1 entre os pares verificados de texto/fundo (destaques, botões, texto secundário, avisos e erros), nas 16 combinações de tema e cor.
 - Menu dentro da tela e ausência de rolagem horizontal em 320, 390, 650, 768 e 1024 px; capturas de desktop e celular em `test-results/appearance-*.png`.
 - Container reconstruído e saudável. Fluxo completo validado no serviço atualizado: troca de tema/cor preservou o arquivo e a transcrição, com download dos três formatos e apenas uma chamada de transcrição simulada.
+
+## Melhoria: API Key pela interface · 22/09/2026
+
+- 35 testes Python e 7 testes JavaScript passaram, incluindo prioridade sobre o ambiente, primeira configuração, leitura em novo processo, arquivo com permissão `0600`, erro de gravação preservando a chave anterior, validação de entrada e proteção de Host/origem/token.
+- Transcrição e consulta de saldo mantêm uma única configuração durante cada requisição; as próximas chamadas usam a chave nova. Testes com respostas simuladas, sem consumir créditos.
+- Chromium com servidor e armazenamento isolados: configuração inicial, troca efetiva da chave usada pelo backend, atualização do saldo, preservação do arquivo e da transcrição, erro de validação, cancelamento por Escape, retorno de foco, recarga e alteração apenas do projeto.
+- Chave ausente das respostas e dos armazenamentos do navegador. Campo de senha limpo após salvar ou fechar; configuração real do usuário preservada nos testes.
+- Modal inspecionada em temas claro/escuro e larguras de 320, 390 e 1440 px, sem overflow. Capturas em `test-results/settings-*.png`.
+- Compose validado; imagem reconstruída e container saudável. Volume verificado com gravação temporária pelo usuário `10001`, permissão `0600` e leitura por outro processo. Fluxo existente de navegador passou também no serviço atualizado.

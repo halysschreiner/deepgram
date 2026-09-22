@@ -6,6 +6,61 @@ const booleanOptions = ['smart_format', 'punctuate', 'paragraphs', 'multichannel
 let config = null, selectedFile = null, audioURL = null, duration = null, busy = false, result = null, run = null;
 let timer = null;
 let balanceLoading = false;
+let balanceController = null, savingSettings = false;
+
+function updateConnection() {
+  $('connection').textContent = config.configured ? 'Chave configurada' : 'Chave não configurada';
+  $('connection').classList.toggle('ready', config.configured);
+  $('setup').hidden = config.configured;
+  $('open-settings').disabled = false;
+}
+$('open-settings').addEventListener('click', () => {
+  if (!config) return;
+  $('appearance').open = false;
+  $('api-key').value = '';
+  $('api-key').required = !config.configured;
+  $('api-key-hint').textContent = config.configured ? 'A chave atual não é exibida. Deixe vazio para manter a chave e alterar apenas o projeto.' : 'Cole sua chave da Deepgram para começar.';
+  $('project-id').value = config.project_id || '';
+  $('credentials-error').hidden = true;
+  $('settings-dialog').showModal();
+});
+$('cancel-settings').addEventListener('click', () => $('settings-dialog').close());
+$('settings-dialog').addEventListener('cancel', event => { if (savingSettings) event.preventDefault(); });
+$('settings-dialog').addEventListener('close', () => {
+  $('api-key').value = '';
+  $('open-settings').focus();
+});
+$('credentials-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (savingSettings || !config) return;
+  savingSettings = true;
+  $('credentials-fields').disabled = true;
+  $('save-settings').textContent = 'Salvando…';
+  $('credentials-error').hidden = true;
+  try {
+    const response = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-App-Token': config.token },
+      body: JSON.stringify({ api_key: $('api-key').value, project_id: $('project-id').value }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Não foi possível salvar a configuração.');
+    Object.assign(config, data);
+    updateConnection(); updateSubmit();
+    $('credentials-status').textContent = 'Configuração salva. As próximas transcrições usarão esta chave.';
+    $('settings-dialog').close();
+    loadBalance(true);
+  } catch (failure) {
+    $('credentials-error').textContent = failure.name === 'TimeoutError' || failure instanceof TypeError ? 'Não foi possível confirmar o salvamento. Confira a conexão e tente salvar novamente.' : failure.message;
+    $('credentials-error').hidden = false;
+  } finally {
+    // Never retain the submitted secret in the form after a request.
+    $('api-key').value = '';
+    savingSettings = false;
+    $('credentials-fields').disabled = false;
+    $('save-settings').textContent = 'Salvar e usar';
+  }
+});
 
 function error(message) { $('error').textContent = message; $('error').hidden = !message; }
 function fileSize(bytes) {
@@ -63,13 +118,12 @@ async function loadConfig() {
     $('model').replaceChildren(...config.models.map(item => new Option(item.name, item.id)));
     if (previous) $('model').value = previous;
     populateLanguages();
-    $('connection').textContent = config.configured ? 'Chave configurada' : 'Chave não configurada';
-    $('connection').classList.toggle('ready', config.configured);
-    $('setup').hidden = config.configured;
+    updateConnection();
     if (!selectedFile) $('file-meta').textContent = `Um arquivo por vez · até ${config.max_upload_mb} MB`;
     error(''); updateSubmit(); loadBalance();
   } catch {
     config = null; updateSubmit();
+    $('open-settings').disabled = true;
     $('connection').textContent = 'Servidor indisponível';
     $('balance-value').textContent = 'Indisponível';
     $('balance-note').textContent = 'Confira o container e atualize a página.';
@@ -77,8 +131,11 @@ async function loadConfig() {
     error('Não foi possível carregar a configuração. Confira o container e atualize a página.');
   }
 }
-async function loadBalance() {
-  if (balanceLoading) return;
+async function loadBalance(force = false) {
+  if (balanceLoading && !force) return;
+  balanceController?.abort();
+  const controller = new AbortController();
+  balanceController = controller;
   if (!config?.configured) {
     $('balance-value').textContent = '—';
     $('balance-note').textContent = 'Configure sua chave para consultar os créditos.';
@@ -92,8 +149,9 @@ async function loadBalance() {
   $('balance-value').textContent = 'Consultando…';
   $('balance-note').textContent = 'Buscando o saldo informado pela Deepgram.';
   try {
-    const response = await fetch('/api/balance', { cache: 'no-store', headers: { 'X-App-Token': config.token }, signal: AbortSignal.timeout(35000) });
+    const response = await fetch('/api/balance', { cache: 'no-store', headers: { 'X-App-Token': config.token }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(35000)]) });
     const data = await response.json();
+    if (controller.signal.aborted) return;
     if (!response.ok) throw new Error(data.error || 'Não foi possível consultar o saldo.');
     $('balance-value').textContent = data.balances.map(item => {
       const amount = Number(item.amount);
@@ -103,16 +161,19 @@ async function loadBalance() {
     const checked = new Date(data.checked_at).toLocaleTimeString('pt-BR');
     $('balance-note').textContent = `Consultado às ${checked}. O saldo pode levar um tempo para refletir o último uso.`;
   } catch (failure) {
+    if (controller.signal.aborted) return;
     $('balance-value').textContent = 'Indisponível';
     $('balance-section').classList.add('unavailable');
     $('balance-note').textContent = failure.name === 'TimeoutError' ? 'A consulta demorou demais. Tente atualizar novamente.' : failure instanceof TypeError ? 'Falha de conexão ao consultar o saldo. Tente atualizar novamente.' : failure.message;
   } finally {
-    balanceLoading = false;
-    $('refresh-balance').disabled = false;
-    $('balance-section').setAttribute('aria-busy', 'false');
+    if (balanceController === controller) {
+      balanceLoading = false;
+      $('refresh-balance').disabled = false;
+      $('balance-section').setAttribute('aria-busy', 'false');
+    }
   }
 }
-$('refresh-balance').addEventListener('click', loadBalance);
+$('refresh-balance').addEventListener('click', () => loadBalance());
 function releaseAudio() {
   $('audio').pause(); $('audio').removeAttribute('src'); $('audio').load(); $('audio').hidden = true;
   if (audioURL) URL.revokeObjectURL(audioURL);

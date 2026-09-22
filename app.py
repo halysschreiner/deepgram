@@ -5,6 +5,7 @@ import os
 import re
 import secrets
 import threading
+import tempfile
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -26,6 +27,8 @@ if not 1 <= MAX_MB <= 2048 or not 30 <= TIMEOUT <= 3300:
     raise RuntimeError("MAX_UPLOAD_MB deve estar entre 1 e 2048; timeout entre 30 e 3300 segundos.")
 TOKEN = secrets.token_urlsafe(32)
 BUSY = threading.Lock()
+SETTINGS_LOCK = threading.Lock()
+SETTINGS_FILE = Path(os.environ.get("SETTINGS_FILE", str(Path(__file__).parent / "data" / "credentials.json")))
 EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg", ".opus", ".flac", ".aac", ".mp4", ".webm", ".aiff", ".aif", ".amr", ".wma"}
 app = Flask(__name__, static_url_path="/static")
 app.config.update(MAX_CONTENT_LENGTH=(MAX_MB * 1024 * 1024) + 64 * 1024,
@@ -68,10 +71,64 @@ def health():
 
 @app.get("/api/config")
 def config():
-    return jsonify(configured=bool(API_KEY), token=TOKEN, max_upload_mb=MAX_MB,
+    credentials = get_credentials()
+    return jsonify(configured=bool(credentials["api_key"]), project_id=credentials["project_id"],
+                   token=TOKEN, max_upload_mb=MAX_MB,
                    timeout_seconds=TIMEOUT, models=MODELS,
                    languages=[{"id": code, "name": name} for code, name in LANGUAGES],
                    pricing=PRICING)
+
+
+def get_credentials():
+    # Read an atomic snapshot for every operation, including after a worker restart.
+    # A corrupt/unreadable saved file must not silently fall back to another account.
+    try:
+        return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"api_key": API_KEY, "project_id": PROJECT_ID}
+
+
+def persist_credentials(credentials):
+    SETTINGS_FILE.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=SETTINGS_FILE.parent,
+                                         prefix=".credentials-", delete=False) as output:
+            temporary = Path(output.name)  # mkstemp creates a private (0600) file.
+            json.dump(credentials, output)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, SETTINGS_FILE)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+@app.post("/api/settings")
+def save_settings():
+    if request.content_length is None or request.content_length > 4096:
+        return jsonify(error="Configuração muito grande ou sem tamanho informado."), 413
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or set(data) != {"api_key", "project_id"}:
+        return jsonify(error="Informe a API Key e o projeto no formulário."), 400
+    key, project = data["api_key"], data["project_id"]
+    if not isinstance(key, str) or not isinstance(project, str):
+        return jsonify(error="A chave e o projeto devem ser textos."), 400
+    key, project = key.strip(), project.strip()
+    if key and not re.fullmatch(r"[!-~]{1,512}", key):
+        return jsonify(error="Informe uma API Key válida, sem espaços internos e com até 512 caracteres."), 400
+    if project and not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", project):
+        return jsonify(error="Informe um ID de projeto válido ou deixe vazio para detectar automaticamente."), 400
+    with SETTINGS_LOCK:
+        if not key:
+            key = get_credentials()["api_key"]
+        if not key:
+            return jsonify(error="Informe sua API Key para começar."), 400
+        try:
+            persist_credentials({"api_key": key, "project_id": project})
+        except OSError:
+            return jsonify(error="Não foi possível salvar a configuração no servidor. A configuração anterior foi mantida."), 500
+    return jsonify(configured=True, project_id=project)
 
 
 class BalanceError(Exception):
@@ -80,15 +137,15 @@ class BalanceError(Exception):
         self.status = status
 
 
-def balance_get(path):
+def balance_get(path, api_key):
     # Only read-only management endpoints; credentials and raw responses stay here.
     with requests.get("https://api.deepgram.com/v1/" + path,
-                      headers={"Authorization": "Token " + API_KEY},
+                      headers={"Authorization": "Token " + api_key},
                       timeout=(5, 10), allow_redirects=False) as response:
         if response.status_code == 401:
-            raise BalanceError("A chave foi recusada. Confira DEEPGRAM_API_KEY no .env e recrie o container.")
+            raise BalanceError("A chave foi recusada. Atualize a credencial no botão API Key.")
         if response.status_code == 403:
-            raise BalanceError("A chave atual não permite consultar o saldo. Use uma chave com billing:read e project:read no .env e recrie o container.")
+            raise BalanceError("A chave atual não permite consultar o saldo. Use uma chave com billing:read e project:read no botão API Key.")
         if response.status_code == 429:
             raise BalanceError("Limite de consultas atingido. Aguarde antes de atualizar o saldo.")
         if response.status_code != 200:
@@ -101,20 +158,22 @@ def balance_get(path):
 
 @app.get("/api/balance")
 def balance():
-    if not API_KEY:
-        return jsonify(error="Configure DEEPGRAM_API_KEY no .env para consultar os créditos."), 503
+    credentials = get_credentials()
+    api_key = credentials["api_key"]
+    if not api_key:
+        return jsonify(error="Configure sua credencial no botão API Key para consultar os créditos."), 503
     try:
-        project_id = PROJECT_ID
+        project_id = credentials["project_id"]
         if not project_id:
-            projects = balance_get("projects").get("projects")
+            projects = balance_get("projects", api_key).get("projects")
             if not isinstance(projects, list):
                 raise ValueError("Invalid project list")
             if len(projects) != 1:
-                raise BalanceError("Não foi possível selecionar um único projeto. Preencha DEEPGRAM_PROJECT_ID no .env com o projeto usado nas transcrições e recrie o container.", 409)
+                raise BalanceError("Não foi possível selecionar um único projeto. Preencha o ID do projeto (DEEPGRAM_PROJECT_ID) no botão API Key.", 409)
             project_id = projects[0].get("project_id") if isinstance(projects[0], dict) else None
         if not isinstance(project_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", project_id):
-            raise BalanceError("Não foi possível identificar o projeto. Confira DEEPGRAM_PROJECT_ID no .env.", 400)
-        balances = balance_get(f"projects/{project_id}/balances").get("balances")
+            raise BalanceError("Não foi possível identificar o projeto. Confira o ID do projeto no botão API Key.", 400)
+        balances = balance_get(f"projects/{project_id}/balances", api_key).get("balances")
         if not isinstance(balances, list):
             raise ValueError("Invalid balance list")
         if not balances:
@@ -144,7 +203,7 @@ def balance():
 def provider_error(response):
     messages = {
         400: "A Deepgram recusou o arquivo ou as opções. Confira o formato e a combinação de idioma e modelo.",
-        401: "A chave da Deepgram foi recusada. Confira DEEPGRAM_API_KEY no .env e recrie o container.",
+        401: "A chave da Deepgram foi recusada. Atualize a credencial no botão API Key.",
         402: "A Deepgram informou que não há créditos suficientes. Confira o saldo no console.",
         403: "A chave não tem permissão para esta operação ou este modelo.",
         413: "O arquivo ultrapassa o limite aceito pela Deepgram.",
@@ -169,8 +228,9 @@ def provider_error(response):
 
 @app.post("/api/transcribe")
 def transcribe():
-    if not API_KEY:
-        return jsonify(error="Preencha DEEPGRAM_API_KEY no .env e execute docker compose up -d --force-recreate."), 503
+    api_key = get_credentials()["api_key"]
+    if not api_key:
+        return jsonify(error="Configure sua credencial no botão API Key para transcrever."), 503
     if not BUSY.acquire(blocking=False):
         return jsonify(error="Já existe uma transcrição em andamento. Aguarde a conclusão."), 409
     try:
@@ -190,7 +250,7 @@ def transcribe():
         # Raw binary streaming, no multipart wrapper upstream, no automatic retries.
         upstream = requests.Request(
             "POST", "https://api.deepgram.com/v1/listen", params=params,
-            headers={"Authorization": "Token " + API_KEY, "Content-Type": "application/octet-stream"},
+            headers={"Authorization": "Token " + api_key, "Content-Type": "application/octet-stream"},
             data=request.stream,
         ).prepare()
         # requests cannot measure a socket, and would fall back to chunked encoding.

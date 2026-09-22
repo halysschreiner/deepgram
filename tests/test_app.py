@@ -2,6 +2,8 @@ import io
 import json
 import os
 import unittest
+import tempfile
+from pathlib import Path
 from urllib.parse import quote
 from unittest.mock import MagicMock, patch
 
@@ -54,6 +56,11 @@ class ParametersTests(unittest.TestCase):
 
 class AppTests(unittest.TestCase):
     def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        settings = patch.object(server, "SETTINGS_FILE", Path(folder.name) / "credentials.json")
+        settings.start()
+        self.addCleanup(settings.stop)
         self.client = server.app.test_client()
         self.key = patch.object(server, "API_KEY", "test-secret-do-not-expose")
         self.key.start()

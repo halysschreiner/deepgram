@@ -1,4 +1,6 @@
 import unittest
+import tempfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import requests
@@ -8,6 +10,11 @@ import app as server
 
 class BalanceTests(unittest.TestCase):
     def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        settings = patch.object(server, "SETTINGS_FILE", Path(folder.name) / "credentials.json")
+        settings.start()
+        self.addCleanup(settings.stop)
         self.client = server.app.test_client()
         for name, value in (("API_KEY", "secret-balance-key"), ("PROJECT_ID", "")):
             patcher = patch.object(server, name, value)

@@ -1,6 +1,6 @@
 # Transcritor pessoal · Deepgram
 
-Aplicação web local para transcrever **um arquivo por vez** e baixar **TXT, Markdown e JSON**, sem banco, histórico, volumes de dados ou cadastro de usuários.
+Aplicação web local para transcrever **um arquivo por vez** e baixar **TXT, Markdown e JSON**, sem banco, histórico de transcrições ou cadastro de usuários. Apenas as credenciais configuradas pela interface são persistidas em um volume Docker.
 
 ## Iniciar no Ubuntu WSL / Docker Desktop
 
@@ -15,7 +15,7 @@ Aplicação web local para transcrever **um arquivo por vez** e baixar **TXT, Ma
    nano .env
    ```
 
-3. Preencha `DEEPGRAM_API_KEY` com sua chave do [console Deepgram](https://console.deepgram.com/). Nunca cole a chave no JavaScript ou em arquivos versionados.
+3. A chave do [console Deepgram](https://console.deepgram.com/) pode ser configurada pela interface depois de iniciar. Se preferir, preencha `DEEPGRAM_API_KEY` no `.env` como configuração inicial. Nunca coloque a chave em arquivos versionados.
 4. Inicie:
 
    ```sh
@@ -26,13 +26,17 @@ Aplicação web local para transcrever **um arquivo por vez** e baixar **TXT, Ma
 
    Para acessar de outra máquina — por exemplo pelo Tailscale — ajuste as duas variáveis juntas: `BIND_ADDR` com o IP da interface a publicar e `ALLOWED_HOSTS` acrescentando esse IP e o nome MagicDNS. Uma sem a outra resulta em conexão recusada ou em `403`.
 
-Se o container já estiver iniciado e você apenas alterar a chave:
+## Trocar a API Key pela interface
 
-```sh
-docker compose up -d --force-recreate
-```
+No cabeçalho, abra **API Key**, cole a nova chave e clique em **Salvar e usar**. A alteração vale imediatamente para as próximas requisições, sem SSH, edição do `.env` ou reinicialização. O saldo é atualizado automaticamente, e o arquivo selecionado e a transcrição exibida são preservados. Transcrições já iniciadas continuam com a chave anterior.
 
-Atualize a página após recriar o container. A indicação **Chave configurada** informa que existe um valor no ambiente; a validade é verificada pela Deepgram ao transcrever.
+O **ID do projeto** é opcional e serve para consultar o saldo quando a chave acessa vários projetos. Ao trocar de conta, limpe o campo para detecção automática ou informe o novo projeto. Deixar a API Key vazia mantém a chave atual e permite alterar apenas o projeto. A chave atual nunca é exibida no formulário.
+
+A configuração salva fica em `/app/data/credentials.json`, no volume Docker `settings`, com permissão `0600`, e tem prioridade sobre `DEEPGRAM_API_KEY` e `DEEPGRAM_PROJECT_ID` do `.env`. Sobrevive a reinícios e recriações normais do container. `docker compose down -v` remove esse volume e suas credenciais; sem o arquivo salvo, a aplicação volta a usar o `.env`. Alterar somente o `.env` não substitui uma chave já salva pela interface.
+
+Para instalar esta melhoria em uma versão anterior, execute uma vez `docker compose up -d --build` e atualize a página. As trocas seguintes são feitas pela interface.
+
+A indicação **Chave configurada** informa que existe uma credencial salva ou no ambiente. Salvar não valida a chave no provedor nem consome créditos de transcrição; a validade e as permissões são verificadas nas chamadas à Deepgram. Uma falha na consulta de saldo não impede transcrições.
 
 ## Usar
 
@@ -57,11 +61,11 @@ As preferências ficam salvas neste navegador e são sincronizadas entre abas do
 
 A faixa **Créditos restantes do projeto** consulta o saldo real informado pela API da Deepgram ao abrir a página, ao terminar uma tentativa de transcrição e ao clicar em **Atualizar saldo**. Mostra o horário da consulta; o provedor pode demorar para refletir o último uso. Não subtrai a estimativa local dos créditos nem presume que o saldo inicial seja US$ 200.
 
-A chave em `DEEPGRAM_API_KEY` precisa permitir **`project:read`** (descobrir o projeto) e **`billing:read`** (ler os créditos), além das permissões usadas para transcrever. Uma chave pode transcrever normalmente e ainda assim não ter acesso ao saldo.
+A chave ativa precisa permitir **`project:read`** (descobrir o projeto) e **`billing:read`** (ler os créditos), além das permissões usadas para transcrever. Uma chave pode transcrever normalmente e ainda assim não ter acesso ao saldo.
 
-Se aparecer a mensagem de falta de permissão, crie no console Deepgram uma chave do mesmo projeto com as permissões necessárias, substitua o valor no `.env` e execute `docker compose up -d --force-recreate`. Os papéis `admin` e `owner` incluem leitura de faturamento; `member` não inclui. Prefira os escopos específicos quando disponíveis. A aplicação não altera permissões na sua conta.
+Se aparecer a mensagem de falta de permissão, crie no console Deepgram uma chave do mesmo projeto com as permissões necessárias, abra **API Key** e salve a nova chave. Os papéis `admin` e `owner` incluem leitura de faturamento; `member` não inclui. Prefira os escopos específicos quando disponíveis. A aplicação não altera permissões na sua conta.
 
-Quando a chave acessa apenas um projeto, ele é identificado automaticamente. Se acessar vários, defina `DEEPGRAM_PROJECT_ID` no `.env` com o projeto usado para transcrever. Os saldos de uma mesma moeda são somados dentro desse projeto; moedas diferentes são mostradas separadamente. Falhas de consulta aparecem como **Indisponível**, sem inventar saldo zero, e não bloqueiam os uploads.
+Quando a chave acessa apenas um projeto, ele é identificado automaticamente. Se acessar vários, preencha **ID do projeto** na janela **API Key** com o projeto usado para transcrever. Os saldos de uma mesma moeda são somados dentro desse projeto; moedas diferentes são mostradas separadamente. Falhas de consulta aparecem como **Indisponível**, sem inventar saldo zero, e não bloqueiam os uploads.
 
 ## Modelos e opções
 
@@ -95,10 +99,10 @@ A estimativa usa a duração lida pelo navegador; o saldo real é consultado sep
 
 ## Dados e acesso
 
-- Por padrão a porta é publicada somente em `127.0.0.1`, sem exposição à rede local. `BIND_ADDR` escolhe a interface: use o IP de uma interface específica (como a do Tailscale) em vez de `0.0.0.0`, que abriria o serviço para toda a LAN. Não é uma aplicação para publicar na internet: não tem login, e quem alcança a porta usa a sua chave da Deepgram.
-- A chave fica no ambiente do container, é excluída do contexto de build e nunca é enviada ao navegador.
+- Por padrão a porta é publicada somente em `127.0.0.1`, sem exposição à rede local. `BIND_ADDR` escolhe a interface: use o IP de uma interface específica (como a do Tailscale) em vez de `0.0.0.0`, que abriria o serviço para toda a LAN. Não é uma aplicação para publicar na internet: não tem login, e quem alcança a porta pode transcrever e trocar a configuração da Deepgram.
+- A chave inicial pode vir do ambiente. As credenciais salvas pela interface ficam no volume privado do servidor, em texto simples com acesso restrito ao usuário do aplicativo; proteja também os backups desse volume. O formulário envia a chave ao servidor, que nunca a devolve nas respostas. O aplicativo não a salva em localStorage/sessionStorage nem em logs. Use HTTPS ou um canal privado como Tailscale ao acessar remotamente.
 - O áudio **não é bufferizado**: o corpo da requisição é repassado à Deepgram enquanto chega, sem passar por memória nem por `/tmp`. O container usa ~40 MB de RAM tanto para um arquivo de 3 MB quanto para um de 2 GB. Não são criados históricos locais de áudio/transcrição.
-- O container roda sem root, com sistema de arquivos somente leitura e sem volumes de dados. Logs de acesso HTTP estão desativados; erros internos registram apenas a classe da exceção, sem texto, áudio ou chave.
+- O container roda sem root, com sistema de arquivos somente leitura, exceto `/tmp` e o volume de credenciais em `/app/data`. Áudio e transcrições não são persistidos nesse volume. Logs de acesso HTTP estão desativados; erros internos registram apenas a classe da exceção, sem texto, áudio ou chave.
 - O áudio é enviado pela internet à Deepgram. A ausência de histórico neste aplicativo não define a política de retenção do provedor; valem as condições da sua conta e a opção `mip_opt_out` escolhida.
 - Uma transcrição por vez, inclusive entre abas. O servidor não repete requisições automaticamente. Após timeout/interrupção, confira o console antes de reenviar: a Deepgram pode já ter processado/cobrado o áudio.
 
@@ -106,8 +110,8 @@ A estimativa usa a duração lida pelo navegador; o saldo real é consultado sep
 
 | Variável no `.env` | Padrão | Uso |
 | --- | --- | --- |
-| `DEEPGRAM_API_KEY` | vazio | Sua chave da Deepgram |
-| `DEEPGRAM_PROJECT_ID` | vazio | Opcional: projeto de transcrição quando houver mais de um acessível |
+| `DEEPGRAM_API_KEY` | vazio | Chave inicial; a configuração salva pela interface tem prioridade |
+| `DEEPGRAM_PROJECT_ID` | vazio | Projeto inicial opcional; a configuração salva pela interface tem prioridade |
 | `PORT` | `8765` | Porta local do navegador |
 | `BIND_ADDR` | `127.0.0.1` | Interface onde a porta é publicada |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1,::1` | Allowlist exata do header `Host` (barra DNS rebinding). Mantenha `127.0.0.1`: o healthcheck usa esse host |
@@ -144,9 +148,12 @@ Teste opcional de navegador (container iniciado):
 .venv/bin/pip install playwright
 .venv/bin/playwright install chromium
 .venv/bin/python tests/browser_smoke.py
+.venv/bin/python tests/browser_settings.py
 ```
 
 O teste do navegador usa áudio sintético e intercepta a chamada de transcrição; **não consome créditos**. Capturas ficam em `test-results/`, ignorado pelo Git e pelo Docker. É possível usar Chromium existente com `CHROMIUM_EXECUTABLE` e outra URL local com `APP_URL`.
+
+`browser_settings.py` inicia um servidor temporário com credenciais fictícias e armazenamento isolado. Verifica o salvamento real pela interface sem modificar a configuração do container nem chamar a Deepgram. Fora do Docker, o caminho padrão é `data/credentials.json` (ignorado pelo Git); `SETTINGS_FILE` permite escolher outro caminho.
 
 ## Versionamento e releases
 

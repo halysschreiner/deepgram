@@ -25,7 +25,7 @@ Uma ferramenta local para transcrever arquivos com uma conta Deepgram.
 - Arquivo, idioma e modelo antes das opções avançadas.
 - Gerar todos os downloads a partir da mesma resposta da API.
 - Mostrar estados de envio, processamento, falha e conclusão.
-- Chave configurada uma vez no .env e usada somente no servidor.
+- Chave configurável pela interface, persistida no servidor e aplicada nas próximas requisições sem reiniciar. O .env é a configuração inicial opcional.
 
 ## Implementation decisions
 
