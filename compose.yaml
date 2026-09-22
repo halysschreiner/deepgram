@@ -1,0 +1,26 @@
+name: deepgram-local
+services:
+  transcriber:
+    build: .
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${PORT:-8765}:8080"
+    environment:
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      DEEPGRAM_PROJECT_ID: ${DEEPGRAM_PROJECT_ID:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-500}
+      DEEPGRAM_TIMEOUT_SECONDS: ${DEEPGRAM_TIMEOUT_SECONDS:-1800}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,::1}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=134217728,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

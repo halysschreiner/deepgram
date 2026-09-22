@@ -1,0 +1,6 @@
+*
+!requirements.txt
+!app.py
+!catalog.py
+!static/
+!static/**

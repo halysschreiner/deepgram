@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Transcritor · Deepgram</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Transcritor, início"><img src="/static/icon.svg" width="32" height="32" alt=""><span>Transcritor <span class="brand-detail">/ Deepgram</span></span></a>
+    <span class="connection" id="connection" role="status">Verificando configuração…</span>
+  </header>
+  <main>
+    <div class="intro"><h1>Do áudio ao texto.</h1><p>Escolha a gravação, ajuste a transcrição e baixe o resultado.</p></div>
+    <section class="balance-bar" aria-labelledby="balance-title" aria-busy="false" id="balance-section">
+      <div class="balance-amount"><span id="balance-title">Créditos restantes do projeto</span><strong id="balance-value" role="status">—</strong></div>
+      <p id="balance-note" class="balance-note" aria-live="polite">Verificando configuração…</p>
+      <button class="secondary compact" id="refresh-balance" type="button" disabled>Atualizar saldo</button>
+    </section>
+    <div class="notice" id="setup" hidden>
+      <strong>Falta configurar sua chave.</strong>
+      <p>Preencha <code>DEEPGRAM_API_KEY</code> no arquivo <code>.env</code> e execute <code>docker compose up -d --force-recreate</code> na pasta do projeto.</p>
+      <button class="secondary compact" id="reload-config" type="button">Verificar configuração</button>
+    </div>
+    <div id="error" class="error" role="alert" hidden></div>
+    <div class="workspace">
+      <section class="settings" aria-labelledby="settings-title">
+        <h2 id="settings-title">Sua gravação</h2>
+        <form id="transcribe-form">
+          <fieldset id="input-fields">
+            <legend class="sr-only">Arquivo e opções de transcrição</legend>
+            <div class="dropzone" id="dropzone">
+              <input id="file" type="file" accept=".mp3,.wav,.m4a,.ogg,.opus,.flac,.aac,.mp4,.webm,.aiff,.aif,.amr,.wma" aria-label="Selecionar arquivo de áudio" aria-describedby="file-hint">
+              <svg class="upload-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg>
+              <strong id="file-title">Selecione ou arraste um áudio</strong>
+              <span id="file-hint">MP3, WAV, M4A, OGG, OPUS, FLAC e outros</span>
+              <span id="file-meta" class="small">Um arquivo por vez · até 500 MB</span>
+            </div>
+            <audio id="audio" controls preload="metadata" hidden aria-label="Ouvir arquivo selecionado"></audio>
+            <div class="fields-row">
+              <label>Modelo<select id="model" name="model" aria-describedby="model-hint"></select></label>
+              <label>Idioma<select id="language" name="language" aria-describedby="language-hint"></select></label>
+            </div>
+            <p id="model-hint" class="hint"></p>
+            <p id="language-hint" class="hint" hidden></p>
+            <label class="check"><input type="checkbox" id="diarize"><span>Separar falantes<small>Identifica as vozes como Pessoa 1, Pessoa 2…</small></span></label>
+            <details id="advanced">
+              <summary>Opções avançadas</summary>
+              <div class="advanced-content">
+                <label class="check"><input type="checkbox" id="smart_format" checked><span>Formatação inteligente<small>Melhora a apresentação de datas, valores e pontuação.</small></span></label>
+                <label class="check"><input type="checkbox" id="punctuate" checked><span>Adicionar pontuação</span></label>
+                <label class="check"><input type="checkbox" id="paragraphs" checked><span>Organizar em parágrafos</span></label>
+                <p class="hint">A formatação inteligente e os parágrafos também podem ativar a pontuação na Deepgram.</p>
+                <label class="check"><input type="checkbox" id="multichannel"><span>Transcrever canais separadamente<small>Para gravações com uma pessoa em cada canal. Cada canal é cobrado separadamente.</small></span></label>
+                <div class="fields-row">
+                  <label>Separação de falantes<select id="diarize_model" disabled><option value="latest">Versão mais recente</option><option value="v2">Versão 2</option><option value="v1">Versão 1</option></select></label>
+                  <label>Pausa entre falas (s)<input id="utt_split" type="number" min="0.1" max="10" step="0.1" value="0.8"></label>
+                </div>
+                <label>Termos específicos <span id="terms-label" class="tag">Adicional pago</span><textarea id="terms" rows="3" maxlength="2000" placeholder="Deepgram&#10;NFS-e&#10;Nome de um produto" aria-describedby="terms-hint"></textarea></label>
+                <p id="terms-hint" class="hint">Um termo por linha, sem pesos. Até 50 termos; no Nova-3, a API limita o total a 500 tokens. Adicional: US$ 0,0013/min.</p>
+                <label>Substituições no texto<textarea id="replacements" rows="2" maxlength="4000" placeholder="deep gram => Deepgram" aria-describedby="replace-hint"></textarea></label>
+                <p class="hint" id="replace-hint">Uma substituição por linha, no formato origem =&gt; destino.</p>
+                <label class="check"><input type="checkbox" id="filler_words" disabled><span>Preservar interjeições<small>Como “uh” e “um”. Disponível aqui para inglês.</small></span></label>
+                <label class="check"><input type="checkbox" id="profanity_filter" disabled><span>Filtrar palavrões<small>Disponível aqui para inglês.</small></span></label>
+                <label class="check"><input type="checkbox" id="mip_opt_out"><span>Não participar da melhoria de modelos<small>Envia a opção de exclusão do programa da Deepgram. Pode alterar a tarifa; confira as condições da sua conta.</small></span></label>
+              </div>
+            </details>
+            <div class="estimate"><span>Estimativa de transcrição</span><strong id="cost">Selecione um arquivo</strong><small id="cost-note">Referência Pay As You Go. O saldo é consultado separadamente acima.</small></div>
+            <button class="primary" id="submit" type="submit" disabled>Transcrever áudio <span aria-hidden="true">→</span></button>
+          </fieldset>
+        </form>
+        <p class="privacy">O áudio é enviado à Deepgram para transcrição. Este aplicativo não mantém histórico.</p>
+      </section>
+      <section class="result" aria-labelledby="result-title" aria-busy="false" id="result-section">
+        <div class="result-heading"><h2 id="result-title">Transcrição</h2><button id="clear" class="text-button" type="button" disabled>Limpar</button></div>
+        <div class="result-toolbar">
+          <label class="format-label">Formato<select id="format"><option value="txt">Texto · .txt</option><option value="md">Markdown · .md</option><option value="json">JSON completo · .json</option></select></label>
+          <button class="secondary" id="download" type="button" disabled>Baixar arquivo</button>
+        </div>
+        <div class="export-options">
+          <label class="check inline"><input type="checkbox" id="timestamps"><span>Marcas de tempo</span></label>
+          <label class="check inline"><input type="checkbox" id="speakers" checked><span>Mostrar falantes</span></label>
+          <button class="text-button" id="copy" type="button" disabled>Copiar</button>
+        </div>
+        <div class="progress-area" id="progress-area" hidden>
+          <strong id="progress-label" role="status">Enviando áudio…</strong>
+          <progress id="progress" max="100" value="0" aria-label="Envio do áudio"></progress>
+          <p class="hint" id="progress-hint">Mantenha esta página aberta até concluir.</p>
+        </div>
+        <div class="empty" id="empty">
+          <svg width="44" height="44" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M9 3h11l6 6v20H6V6a3 3 0 0 1 3-3Z"/><path d="M20 3v7h6M11 16h10M11 21h10"/></svg>
+          <h3>Seu texto aparece aqui</h3>
+          <p>Envie uma gravação para começar. Depois, baixe TXT, Markdown ou JSON a partir da mesma transcrição.</p>
+        </div>
+        <p class="result-meta" id="result-meta" hidden></p>
+        <pre id="preview" tabindex="0" aria-label="Prévia da transcrição" hidden></pre>
+        <p id="result-status" class="result-status" role="status" aria-live="polite"></p>
+        <p class="download-note">Trocar o formato não gera outra cobrança. Baixe o resultado antes de fechar ou atualizar a página.</p>
+      </section>
+    </div>
+  </main>
+  <footer><span>Uso pessoal · sem histórico local</span><a href="https://console.deepgram.com/" target="_blank" rel="noreferrer">Abrir console Deepgram ↗</a></footer>
+</body>
+</html>
