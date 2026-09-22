@@ -148,6 +148,53 @@ Teste opcional de navegador (container iniciado):
 
 O teste do navegador usa áudio sintético e intercepta a chamada de transcrição; **não consome créditos**. Capturas ficam em `test-results/`, ignorado pelo Git e pelo Docker. É possível usar Chromium existente com `CHROMIUM_EXECUTABLE` e outra URL local com `APP_URL`.
 
+## Versionamento e releases
+
+O projeto segue [Versionamento Semântico](https://semver.org/lang/pt-BR/) no formato `MAJOR.MINOR.PATCH`. A versão mais recente está em [`VERSION`](VERSION) e as mudanças estão no [`CHANGELOG.md`](CHANGELOG.md). Durante o desenvolvimento, registre mudanças em **Não lançado** e atualize `VERSION` ao preparar a próxima release.
+
+O compromisso de compatibilidade abrange a configuração documentada, o fluxo de transcrição/exportação e os formatos TXT/Markdown gerados pelo aplicativo. O JSON exportado é a resposta do provedor, cujo formato é controlado pela Deepgram.
+
+| Tipo de mudança | Próxima versão a partir de 1.1.0 | Exemplo |
+| --- | --- | --- |
+| Correção compatível (`PATCH`) | `1.1.1` | Corrigir contraste de um botão no tema escuro |
+| Funcionalidade compatível (`MINOR`) | `1.2.0` | Adicionar um novo formato de exportação |
+| Mudança incompatível (`MAJOR`) | `2.0.0` | Remover uma configuração documentada sem manter compatibilidade |
+
+As tags Git usam o prefixo `v` e são **anotadas**. Os dois primeiros marcos foram identificados retroativamente, preservando os commits originais:
+
+| Tag | Commit | Conteúdo |
+| --- | --- | --- |
+| `v1.0.0` | `7c31928` | Aplicação inicial |
+| `v1.1.0` | `c9e210a` | Temas e cores de destaque |
+
+Esses commits antecedem a criação de `VERSION` e do changelog; por isso, os arquivos de versionamento não existem ao fazer checkout dessas duas tags. Nas próximas releases, eles devem fazer parte do commit marcado pela tag. Uma tag publicada nunca deve ser movida ou reutilizada.
+
+### Preparar uma próxima versão
+
+1. Escolha o número pelo impacto das mudanças. Commits `feat:` normalmente indicam `MINOR`, `fix:` indica `PATCH` e mudanças incompatíveis indicam `MAJOR`. O processo é manual: mensagens de commit não criam releases automaticamente.
+2. Atualize `VERSION` (somente o número, sem `v`) e mova as mudanças de **Não lançado** para uma seção com a nova versão e a data no changelog. Atualize também os links de comparação no final do arquivo.
+3. Execute os testes da seção **Desenvolvimento e testes**. Valide `docker compose config --quiet` se alterar o Compose e execute o teste de navegador se alterar a interface.
+4. Inclua os arquivos alterados no Git e crie o commit da release, por exemplo `chore(release): 1.1.1`. Confira `git status --short`: a árvore deve estar limpa antes de criar a tag.
+5. Crie a tag no commit da release e publique a branch e essa tag:
+
+   ```sh
+   release_version=$(cat VERSION)
+   git tag -a "v${release_version}" -m "Release v${release_version}"
+   git push --atomic origin main "v${release_version}"
+   ```
+
+Para publicar as duas tags históricas criadas localmente, use `git push --atomic origin v1.0.0 v1.1.0`. Enviar tags não envia alterações ainda sem commit. Os links históricos do changelog passam a funcionar quando as tags estiverem no GitHub.
+
+Uma **GitHub Release** é opcional: depois de enviar a tag, selecione-a em **Releases → Draft a new release** e copie a seção correspondente do changelog. Criar uma tag não publica uma GitHub Release nem uma imagem Docker automaticamente.
+
+Para consultar as versões locais:
+
+```sh
+cat VERSION
+git tag --list --sort=-version:refname
+git show --no-patch v1.1.0
+```
+
 ## Referências
 
 - [API de arquivos gravados](https://developers.deepgram.com/reference/speech-to-text/listen-pre-recorded)
