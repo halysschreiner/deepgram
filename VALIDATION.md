@@ -13,3 +13,12 @@ Os testes automatizados usam respostas simuladas da API. O teste ponta a ponta c
 
 - 22 testes Python passaram (14 existentes + 8 para saldo): soma decimal por moeda, zero/negativos reais, atualização, seleção do projeto, ausência de chave/token, permissões, respostas inválidas e falhas de rede independentes das transcrições.
 - Navegador: saldo simulado carregado, atualização manual e após transcrição, mensagem para falta de permissão e upload habilitado apesar da falha de saldo. Regressão de downloads e layouts desktop/celular passou.
+
+## Melhoria: aparência · 22/09/2026
+
+- 26 testes Python e 7 testes JavaScript passaram; fluxo de navegador existente passou com respostas simuladas, sem consumir créditos.
+- Chromium: temas claro, escuro e automático; mudança do sistema em tempo real; preferência manual preservada; oito cores; persistência após recarregar e sincronização entre abas.
+- Menu operado por teclado, seleção de cores com setas, fechamento com Escape e retorno do foco. Armazenamento inválido ou bloqueado não impede a interface de funcionar.
+- Contraste mínimo medido de 6,19:1 entre os pares verificados de texto/fundo (destaques, botões, texto secundário, avisos e erros), nas 16 combinações de tema e cor.
+- Menu dentro da tela e ausência de rolagem horizontal em 320, 390, 650, 768 e 1024 px; capturas de desktop e celular em `test-results/appearance-*.png`.
+- Container reconstruído e saudável. Fluxo completo validado no serviço atualizado: troca de tema/cor preservou o arquivo e a transcrição, com download dos três formatos e apenas uma chamada de transcrição simulada.

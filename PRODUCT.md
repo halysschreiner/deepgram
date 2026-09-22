@@ -29,4 +29,4 @@ Uma ferramenta local para transcrever arquivos com uma conta Deepgram.
 
 ## Implementation decisions
 
-Decisões de interface tomadas para esta implementação: visual claro para leitura de transcrições durante o trabalho, controles nativos, teclado e contraste legíveis. Não foram solicitadas referências visuais específicas.
+Temas claro, escuro e automático (padrão, acompanha o sistema), com oito cores de destaque inspiradas nas opções do macOS, incluindo laranja. Verde é a cor padrão. O menu Aparência no cabeçalho salva as preferências no navegador. Controles nativos, navegação por teclado e contraste legível nos dois temas.

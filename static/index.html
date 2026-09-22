@@ -3,16 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
   <title>Transcritor · Deepgram</title>
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <script src="/static/appearance.js"></script>
   <link rel="stylesheet" href="/static/style.css">
   <script type="module" src="/static/app.js"></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="Transcritor, início"><img src="/static/icon.svg" width="32" height="32" alt=""><span>Transcritor <span class="brand-detail">/ Deepgram</span></span></a>
-    <span class="connection" id="connection" role="status">Verificando configuração…</span>
+    <div class="topbar-actions">
+      <span class="connection" id="connection" role="status">Verificando configuração…</span>
+      <details class="appearance" id="appearance">
+        <summary>Aparência</summary>
+        <div class="appearance-panel">
+          <fieldset>
+            <legend>Tema</legend>
+            <div class="theme-options">
+              <label><input type="radio" name="theme" value="light"><span>Claro</span></label>
+              <label><input type="radio" name="theme" value="dark"><span>Escuro</span></label>
+              <label><input type="radio" name="theme" value="system" checked><span>Automático</span></label>
+            </div>
+          </fieldset>
+          <p class="hint">Automático acompanha o tema do sistema.</p>
+          <fieldset class="accent-options">
+            <legend>Cor de destaque · <span id="accent-name">Verde</span></legend>
+            <div class="accent-swatches">
+              <label data-accent="blue" title="Azul"><input type="radio" name="accent" value="blue"><span class="swatch" aria-hidden="true"></span><span class="sr-only">Azul</span></label>
+              <label data-accent="purple" title="Roxo"><input type="radio" name="accent" value="purple"><span class="swatch" aria-hidden="true"></span><span class="sr-only">Roxo</span></label>
+              <label data-accent="pink" title="Rosa"><input type="radio" name="accent" value="pink"><span class="swatch" aria-hidden="true"></span><span class="sr-only">Rosa</span></label>
+              <label data-accent="red" title="Vermelho"><input type="radio" name="accent" value="red"><span class="swatch" aria-hidden="true"></span><span class="sr-only">Vermelho</span></label>
+              <label data-accent="orange" title="Laranja"><input type="radio" name="accent" value="orange"><span class="swatch" aria-hidden="true"></span><span class="sr-only">Laranja</span></label>
+              <label data-accent="yellow" title="Amarelo"><input type="radio" name="accent" value="yellow"><span class="swatch" aria-hidden="true"></span><span class="sr-only">Amarelo</span></label>
+              <label data-accent="green" title="Verde"><input type="radio" name="accent" value="green" checked><span class="swatch" aria-hidden="true"></span><span class="sr-only">Verde</span></label>
+              <label data-accent="graphite" title="Grafite"><input type="radio" name="accent" value="graphite"><span class="swatch" aria-hidden="true"></span><span class="sr-only">Grafite</span></label>
+            </div>
+          </fieldset>
+          <p class="hint" id="appearance-storage">Preferências salvas neste navegador.</p>
+        </div>
+      </details>
+    </div>
   </header>
   <main>
     <div class="intro"><h1>Do áudio ao texto.</h1><p>Escolha a gravação, ajuste a transcrição e baixe o resultado.</p></div>

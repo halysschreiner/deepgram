@@ -47,6 +47,12 @@ O texto é mostrado como texto simples, inclusive no modo Markdown (sem executar
 
 **Limpar**, atualizar ou fechar a aba descarta o resultado do aplicativo. Os arquivos baixados permanecem na pasta de downloads escolhida no navegador.
 
+## Aparência
+
+No cabeçalho, abra **Aparência** para escolher **Claro**, **Escuro** ou **Automático** (padrão, acompanha o sistema). Escolha também a cor de destaque: azul, roxo, rosa, vermelho, laranja, amarelo, verde (padrão) ou grafite.
+
+As preferências ficam salvas neste navegador e são sincronizadas entre abas do mesmo endereço. Trocar tema ou cor preserva o arquivo selecionado e a transcrição. Se o navegador bloquear o armazenamento, a escolha funciona durante a sessão da página.
+
 ## Créditos restantes
 
 A faixa **Créditos restantes do projeto** consulta o saldo real informado pela API da Deepgram ao abrir a página, ao terminar uma tentativa de transcrição e ao clicar em **Atualizar saldo**. Mostra o horário da consulta; o provedor pode demorar para refletir o último uso. Não subtrai a estimativa local dos créditos nem presume que o saldo inicial seja US$ 200.
